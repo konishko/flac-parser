@@ -1,25 +1,96 @@
 # PyQt5 Video player
-#!/usr/bin/env python
+# !/usr/bin/env python
 
 from PyQt5.QtCore import QDir, Qt, QUrl
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtWidgets import (QApplication, QFileDialog, QHBoxLayout, QLabel, QMessageBox,
-        QPushButton, QSizePolicy, QSlider, QStyle, QVBoxLayout, QWidget, QLayout)
+        QPushButton, QSizePolicy, QSlider, QStyle, QVBoxLayout, QWidget, QLayout, QTextEdit)
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QAction, QTableWidget, QTableWidgetItem
 from PyQt5.QtGui import QIcon, QPixmap
 import sys
 import operations_with_os as owo
 from flac_parser import Parser
 
-class VideoWindow(QMainWindow):
+
+class AudioWindow(QMainWindow):
 
     def __init__(self, parent=None):
-        super(VideoWindow, self).__init__(parent)
+        super(AudioWindow, self).__init__(parent)
         self.setWindowTitle("Audioplayer")
 
         self.mediaPlayer = QMediaPlayer()
 
+        wid = QWidget(self)
+        self.setCentralWidget(wid)
+
+        self.tables = {}
+        self.name = ''
+        self.file_opened = False
+
+        self._init_control_layout()
+
+        self._init_menu_bar()
+
+        self._init_tool_bar()
+
+        self.make_pic_widget()
+
+        layout = QVBoxLayout()
+
+        layout.addLayout(self.pic_wid)
+        layout.addLayout(self.control_layout)
+        layout.addLayout(self.volume_and_name_layout)
+
+        wid.setLayout(layout)
+
+        self.mediaPlayer.stateChanged.connect(self.media_state_changed)
+        self.mediaPlayer.positionChanged.connect(self.position_changed)
+        self.mediaPlayer.volumeChanged.connect(self.volume_changed)
+        self.mediaPlayer.durationChanged.connect(self.duration_changed)
+        self.mediaPlayer.error.connect(self.handle_error)
+
+    def _init_menu_bar(self):
+        open_action = QAction(QIcon('open.png'), '&Open', self)
+        open_action.setShortcut('Ctrl+O')
+        open_action.setStatusTip('Open song')
+        open_action.triggered.connect(self.open_file)
+
+        exit_action = QAction(QIcon('exit.png'), '&Exit', self)
+        exit_action.setShortcut('Ctrl+Q')
+        exit_action.setStatusTip('Exit application')
+        exit_action.triggered.connect(self.exit_call)
+
+        save_action = QAction(QIcon('open.png'), '&Save picture', self)
+        save_action.setShortcut('Ctrl+S')
+        save_action.setStatusTip('Save picture')
+        save_action.triggered.connect(self.save_picture)
+
+        menu_bar = self.menuBar()
+        file_menu = menu_bar.addMenu('&File')
+        file_menu.addAction(open_action)
+        file_menu.addAction(exit_action)
+        file_menu.addAction(save_action)
+
+    def _init_tool_bar(self):
+        decomposition_dict = {'1': 'Stream info',
+                              '2': 'Vorbis comments',
+                              '3': 'Cuesheet info',
+                              '4': 'Application info',
+                              '5': 'Picture info'}
+
+        self.toolbar = self.addToolBar('')
+
+        for key in decomposition_dict.keys():
+            value = decomposition_dict[key]
+
+            action = QAction(value, self)
+            action.setShortcut(key)
+            action.triggered.connect(lambda checked, val=value: self.show_info(val))
+
+            self.toolbar.addAction(action)
+
+    def _init_control_layout(self):
         self.playButton = QPushButton()
         self.playButton.setEnabled(False)
         self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
@@ -38,101 +109,28 @@ class VideoWindow(QMainWindow):
 
         self.errorLabel = QLabel()
         self.errorLabel.setSizePolicy(QSizePolicy.Preferred,
-                QSizePolicy.Maximum)
+                                      QSizePolicy.Maximum)
 
-        # Create new action
-        openAction = QAction(QIcon('open.png'), '&Open', self)        
-        openAction.setShortcut('Ctrl+O')
-        openAction.setStatusTip('Open movie')
-        openAction.triggered.connect(self.openFile)
+        self.control_layout = QHBoxLayout()
+        self.control_layout.setContentsMargins(0, 0, 0, 0)
+        self.control_layout.addWidget(self.playButton)
+        self.control_layout.addWidget(self.positionSlider)
 
-        # Create exit action
-        exitAction = QAction(QIcon('exit.png'), '&Exit', self)        
-        exitAction.setShortcut('Ctrl+Q')
-        exitAction.setStatusTip('Exit application')
-        exitAction.triggered.connect(self.exitCall)
+        self.volume_and_name_layout = QHBoxLayout()
+        self.volume_and_name_layout.addStretch(2)
+        self.volume_and_name_layout.addWidget(self.volumeSlider)
 
-        saveAction = QAction(QIcon('open.png'), '&Save', self)        
-        saveAction.setShortcut('Ctrl+S')
-        saveAction.setStatusTip('Save picture')
-        saveAction.triggered.connect(self.save_picture)
+    def open_file(self):
+        file_name, _ = QFileDialog.getOpenFileName(self, "Open song",
+                                                   QDir.homePath())
 
-
-        # Create menu bar and add action
-        menuBar = self.menuBar()
-        fileMenu = menuBar.addMenu('&File')
-        fileMenu.addAction(openAction)
-        fileMenu.addAction(exitAction)
-        fileMenu.addAction(saveAction)
-
-        # Create a widget for window contents
-        wid = QWidget(self)
-        self.setCentralWidget(wid)
-
-        # Create layouts to place inside widget
-        controlLayout = QHBoxLayout()
-        controlLayout.setContentsMargins(0, 0, 0, 0)
-        controlLayout.addWidget(self.playButton)
-        controlLayout.addWidget(self.positionSlider)
-        controlLayout.addWidget(self.volumeSlider)
-
-        self.make_pic_widget()
-
-        stream_info_action = QAction('Stream info', self)
-        stream_info_action.setShortcut('1')
-        stream_info_action.triggered.connect(lambda: self.show_info('Stream info'))
-
-        add_info_action = QAction('Vorbis comments', self)
-        add_info_action.setShortcut('2')
-        add_info_action.triggered.connect(lambda: self.show_info('Vorbis comments'))
-
-        cuesheet_action = QAction('Cuesheet info', self)
-        cuesheet_action.setShortcut('3')
-        cuesheet_action.triggered.connect(lambda: self.show_info('Cuesheet info'))
-
-        app_action = QAction('Application info', self)
-        app_action.setShortcut('4')
-        app_action.triggered.connect(lambda: self.show_info('Application info'))
-
-        pic_info = QAction('Picture info', self)
-        pic_info.setShortcut('5')
-        pic_info.triggered.connect(lambda: self.show_info('Picture info'))
-
-        self.toolbar = self.addToolBar('Biba')
-        self.toolbar.addAction(stream_info_action)
-        self.toolbar.addAction(add_info_action)
-        self.toolbar.addAction(cuesheet_action)
-        self.toolbar.addAction(app_action)
-        self.toolbar.addAction(pic_info)
-
-        layout = QVBoxLayout()
-
-        layout.addLayout(self.pic_wid)
-        layout.addLayout(controlLayout)
-        layout.addWidget(self.errorLabel)
-
-        # Set widget to contain window contents
-        wid.setLayout(layout)
-
-        self.mediaPlayer.stateChanged.connect(self.mediaStateChanged)
-        self.mediaPlayer.positionChanged.connect(self.positionChanged)
-        self.mediaPlayer.volumeChanged.connect(self.volumeChanged)
-        self.mediaPlayer.durationChanged.connect(self.durationChanged)
-        self.mediaPlayer.error.connect(self.handleError)
-
-        self.tables = {}
-        self.file_opened = False
-
-    def openFile(self):
-        fileName, _ = QFileDialog.getOpenFileName(self, "Open song",
-                QDir.homePath())
-
-        if fileName != '':
+        if file_name != '':
             self.file_opened = True
+            self.name = file_name
             self.mediaPlayer.setMedia(
-                    QMediaContent(QUrl.fromLocalFile(fileName)))
+                    QMediaContent(QUrl.fromLocalFile(file_name)))
             self.playButton.setEnabled(True)
-            self.try_parse(fileName)
+            self.try_parse(file_name)
 
     def save_picture(self):
         if self.file_opened:
@@ -147,8 +145,7 @@ class VideoWindow(QMainWindow):
                                  'No file opened',
                                  QMessageBox.Ok)
 
-
-    def exitCall(self):
+    def exit_call(self):
         sys.exit(app.exec_())
 
     def show_pic(self):
@@ -234,7 +231,7 @@ class VideoWindow(QMainWindow):
         else:
             self.mediaPlayer.play()
 
-    def mediaStateChanged(self, state):
+    def media_state_changed(self, state):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
             self.playButton.setIcon(
                     self.style().standardIcon(QStyle.SP_MediaPause))
@@ -242,23 +239,23 @@ class VideoWindow(QMainWindow):
             self.playButton.setIcon(
                     self.style().standardIcon(QStyle.SP_MediaPlay))
 
-    def positionChanged(self, position):
+    def position_changed(self, position):
         self.positionSlider.setValue(position)
 
-    def durationChanged(self, duration):
+    def duration_changed(self, duration):
         self.positionSlider.setRange(0, duration)
 
-    def volumeChanged(self, position):
+    def volume_changed(self, position):
         self.volumeSlider.setValue(position)
 
-    def handleError(self):
+    def handle_error(self):
         self.playButton.setEnabled(False)
         self.errorLabel.setText("Error: " + self.mediaPlayer.errorString())
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    player = VideoWindow()
+    player = AudioWindow()
     player.resize(640, 480)
     player.show()
     sys.exit(app.exec_())
