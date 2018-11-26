@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (QApplication, QFileDialog, QHBoxLayout, QLabel, QMe
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QAction, QTableWidget, QTableWidgetItem
 from PyQt5.QtGui import QIcon, QPixmap
 import sys
+import os
 import operations_with_os as owo
 from flac_parser import Parser
 
@@ -94,12 +95,16 @@ class AudioWindow(QMainWindow):
         self.errorLabel.setSizePolicy(QSizePolicy.Preferred,
                                       QSizePolicy.Maximum)
 
+        self.name_label = QLabel()
+        self.name_label.setText('Ready to work!')
+
         self.control_layout = QHBoxLayout()
         self.control_layout.setContentsMargins(0, 0, 0, 0)
         self.control_layout.addWidget(self.playButton)
         self.control_layout.addWidget(self.positionSlider)
 
         self.volume_and_name_layout = QHBoxLayout()
+        self.volume_and_name_layout.addWidget(self.name_label)
         self.volume_and_name_layout.addStretch(2)
         self.volume_and_name_layout.addWidget(self.volumeSlider)
 
@@ -145,9 +150,6 @@ class AudioWindow(QMainWindow):
     def exit_call(self):
         sys.exit(app.exec_())
 
-    def show_pic(self):
-        self.cent_lbl = self.pic_layout
-
     def show_info(self, info_part):
         if info_part in self.tables.keys():
             self.make_info_wid(self.tables[info_part])
@@ -165,6 +167,7 @@ class AudioWindow(QMainWindow):
             parser = Parser(bytes[4:], False)
             parser.parse_flac()
             self.fill_tables(parser.result_dict)
+            self.set_name(self.name)
 
             if parser.picture_exist:
                 self.extension = parser.extension
@@ -172,6 +175,11 @@ class AudioWindow(QMainWindow):
                 self.set_pic(self.pic_bytes)
             else:
                 self.set_default_pic()
+
+        else:
+            QMessageBox.question(self, 'Error',
+                                 'Given file is not FLAC',
+                                 QMessageBox.Ok)
 
     def fill_tables(self, dict):
         for key in dict.keys():
@@ -220,6 +228,10 @@ class AudioWindow(QMainWindow):
         pic.loadFromData(bytes)
         self.pic_label.setPixmap(pic)
         self.pic_label.resize(pic.width(), pic.height())
+
+    def set_name(self, name):
+        name = os.path.basename(name)
+        self.name_label.setText(name)
 
     def play(self):
         if self.media_player.state() == QMediaPlayer.PlayingState:
