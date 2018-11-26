@@ -5,7 +5,8 @@ import argparse
 import operations_with_os as owo
 import sys
 
-class Parser():
+
+class Parser:
     def __init__(self, flac_bytes, save_pic):
         self.bytes = flac_bytes
         self.picture_exist = False
@@ -18,12 +19,12 @@ class Parser():
 
     def parse_metadata_blocks(self):
         is_ended = 0
-        while(not is_ended):
+        while not is_ended:
             current_header = self.bytes[self.pointer:self.pointer + 4]
             is_ended = current_header[0] >> 7
             type_of_block = current_header[0] & 127
             length_of_block = int.from_bytes(current_header[-3:],
-                                               byteorder='big')
+                                             byteorder='big')
 
             if type_of_block == 0:
                 self.parse_streaminfo_block(length_of_block)
@@ -56,14 +57,14 @@ class Parser():
         pass
 
     def parse_picture_block(self, length_of_block):
-        self.picture_description = {'Picture type':4,
-                                    'MIME type':4,
-                                    'Description':4,
-                                    'Width':4,
-                                    'Height':4,
-                                    'Color depth':4,
-                                    'Number of used colors':4,
-                                    'Picture bytes':4}
+        self.picture_description = {'Picture type': 4,
+                                    'MIME type': 4,
+                                    'Description': 4,
+                                    'Width': 4,
+                                    'Height': 4,
+                                    'Color depth': 4,
+                                    'Number of used colors': 4,
+                                    'Picture bytes': 4}
 
         local_pointer = self.pointer + 4
 
@@ -99,18 +100,18 @@ class Parser():
 
         local_pointer = self.pointer + 4
         vendor_length =  int.from_bytes(self.bytes[local_pointer:local_pointer + 4],
-                                               byteorder='little')
+                                        byteorder='little')
         local_pointer += 4
         vendor = self.bytes[local_pointer:local_pointer + vendor_length].decode('utf-8')
 
         local_pointer += vendor_length
         count_of_tags = int.from_bytes(self.bytes[local_pointer:local_pointer + 4],
-                                               byteorder='little')
+                                       byteorder='little')
 
         local_pointer += 4
         for _ in range(count_of_tags):
             length_of_tag = int.from_bytes(self.bytes[local_pointer:local_pointer + 4],
-                                               byteorder='little')
+                                           byteorder='little')
             local_pointer += 4
 
             row_tag = self.bytes[local_pointer:local_pointer + length_of_tag].decode('utf-8')
@@ -124,15 +125,15 @@ class Parser():
         self.result_dict['Vorbis comments'] = self.vorbis_tags
 
     def parse_streaminfo_block(self, length_of_block):
-        self.streaminfo_dict = {'Minimum block size':16,
-                                'Maximum block size':16,
-                                'Minimum frame size':24,
-                                'Maximum frame size':24,
-                                'Sample rate in Hz`s':20,
-                                'Count of channels':3,
-                                'Bits per sample':5,
-                                'Total count of samples':36,
-                                'MD5 signature':128}
+        self.streaminfo_dict = {'Minimum block size': 16,
+                                'Maximum block size': 16,
+                                'Minimum frame size': 24,
+                                'Maximum frame size': 24,
+                                'Sample rate in Hz`s': 20,
+                                'Count of channels': 3,
+                                'Bits per sample': 5,
+                                'Total count of samples': 36,
+                                'MD5 signature': 128}
 
         bits_string = ''
         for byte in self.bytes[self.pointer + 4:self.pointer + length_of_block + 4]:
@@ -156,24 +157,24 @@ class Parser():
         self.pic_name = owo.get_free_name('picture.{}'.format(self.extension))
 
 
-def createParser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--method')
-    parser.add_argument('-f', '--flac')
-    parser.add_argument('-sp', '--save_pic', default=False, action='store_true')
+def create_parser():
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('-m', '--method')
+    arg_parser.add_argument('-f', '--flac')
+    arg_parser.add_argument('-sp', '--save_pic', default=False, action='store_true')
 
-    return parser
+    return arg_parser
 
 
 if __name__ == '__main__':
-    parser = createParser()
+    parser = create_parser()
     namespace = parser.parse_args(sys.argv[1:])
 
-    if (namespace.method == 'parse_flac'):
-        bytes = owo.read_bytes_from_file(namespace.flac)
-        if bytes[:4] == b'fLaC':
-            parser = Parser(bytes[4:], namespace.save_pic)
+    if namespace.method == 'parse_flac':
+        file_bytes = owo.read_bytes_from_file(namespace.flac)
+        if file_bytes[:4] == b'fLaC':
+            parser = Parser(file_bytes[4:], namespace.save_pic)
             parser.parse_flac()
 
         else:
-            print('Gived file is not flac')
+            print('Given file is not FLAC')

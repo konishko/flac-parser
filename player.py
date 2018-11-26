@@ -162,9 +162,9 @@ class AudioWindow(QMainWindow):
                                  .format(info_part), QMessageBox.Ok)
 
     def try_parse(self, file_name):
-        bytes = owo.read_bytes_from_file(file_name)
-        if bytes[:4] == b'fLaC':
-            parser = Parser(bytes[4:], False)
+        file_bytes = owo.read_bytes_from_file(file_name)
+        if file_bytes[:4] == b'fLaC':
+            parser = Parser(file_bytes[4:], False)
             parser.parse_flac()
             self.fill_tables(parser.result_dict)
             self.set_name(self.name)
