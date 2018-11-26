@@ -19,10 +19,10 @@ class AudioWindow(QMainWindow):
         super(AudioWindow, self).__init__(parent)
         self.setWindowTitle("Audioplayer")
 
-        self.mediaPlayer = QMediaPlayer()
+        self.media_player = QMediaPlayer()
 
-        wid = QWidget(self)
-        self.setCentralWidget(wid)
+        self.wid = QWidget(self)
+        self.setCentralWidget(self.wid)
 
         self.tables = {}
         self.name = ''
@@ -34,21 +34,12 @@ class AudioWindow(QMainWindow):
 
         self._init_tool_bar()
 
-        self.make_pic_widget()
+        self._init_pic_widget()
 
-        layout = QVBoxLayout()
+        self._init_main_layout()
+        self._init_connections()
 
-        layout.addLayout(self.pic_wid)
-        layout.addLayout(self.control_layout)
-        layout.addLayout(self.volume_and_name_layout)
-
-        wid.setLayout(layout)
-
-        self.mediaPlayer.stateChanged.connect(self.media_state_changed)
-        self.mediaPlayer.positionChanged.connect(self.position_changed)
-        self.mediaPlayer.volumeChanged.connect(self.volume_changed)
-        self.mediaPlayer.durationChanged.connect(self.duration_changed)
-        self.mediaPlayer.error.connect(self.handle_error)
+        self.wid.setLayout(self.main_layout)
 
     def _init_menu_bar(self):
         open_action = QAction(QIcon('open.png'), '&Open', self)
@@ -99,12 +90,12 @@ class AudioWindow(QMainWindow):
 
         self.positionSlider = QSlider(Qt.Horizontal)
         self.positionSlider.setRange(0, 0)
-        self.positionSlider.sliderMoved.connect(self.mediaPlayer.setPosition)
+        self.positionSlider.sliderMoved.connect(self.media_player.setPosition)
 
         self.volumeSlider = QSlider(Qt.Horizontal)
         self.volumeSlider.setRange(0, 100)
-        self.volumeSlider.sliderMoved.connect(self.mediaPlayer.setVolume)
-        self.mediaPlayer.setVolume(50)
+        self.volumeSlider.sliderMoved.connect(self.media_player.setVolume)
+        self.media_player.setVolume(50)
         self.volumeSlider.setValue(50)
 
         self.errorLabel = QLabel()
@@ -120,6 +111,20 @@ class AudioWindow(QMainWindow):
         self.volume_and_name_layout.addStretch(2)
         self.volume_and_name_layout.addWidget(self.volumeSlider)
 
+    def _init_main_layout(self):
+        self.main_layout = QVBoxLayout()
+
+        self.main_layout.addLayout(self.pic_wid)
+        self.main_layout.addLayout(self.control_layout)
+        self.main_layout.addLayout(self.volume_and_name_layout)
+
+    def _init_connections(self):
+        self.media_player.stateChanged.connect(self.media_state_changed)
+        self.media_player.positionChanged.connect(self.position_changed)
+        self.media_player.volumeChanged.connect(self.volume_changed)
+        self.media_player.durationChanged.connect(self.duration_changed)
+        self.media_player.error.connect(self.handle_error)
+
     def open_file(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Open song",
                                                    QDir.homePath())
@@ -127,7 +132,7 @@ class AudioWindow(QMainWindow):
         if file_name != '':
             self.file_opened = True
             self.name = file_name
-            self.mediaPlayer.setMedia(
+            self.media_player.setMedia(
                     QMediaContent(QUrl.fromLocalFile(file_name)))
             self.playButton.setEnabled(True)
             self.try_parse(file_name)
@@ -195,11 +200,10 @@ class AudioWindow(QMainWindow):
             self.tables[key] = table
 
     def make_info_wid(self, table):
-        self.info_wid = QWidget(parent=None, flags=Qt.Window)
         self.info_wid = table
         self.info_wid.resize(table.width(), table.height())
 
-    def make_pic_widget(self):
+    def _init_pic_widget(self):
         self.pic_wid = QVBoxLayout()
         horizontal_layout = QHBoxLayout()
 
@@ -226,13 +230,13 @@ class AudioWindow(QMainWindow):
         self.pic_label.resize(pic.width(), pic.height())
 
     def play(self):
-        if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
-            self.mediaPlayer.pause()
+        if self.media_player.state() == QMediaPlayer.PlayingState:
+            self.media_player.pause()
         else:
-            self.mediaPlayer.play()
+            self.media_player.play()
 
     def media_state_changed(self, state):
-        if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
+        if self.media_player.state() == QMediaPlayer.PlayingState:
             self.playButton.setIcon(
                     self.style().standardIcon(QStyle.SP_MediaPause))
         else:
@@ -250,7 +254,7 @@ class AudioWindow(QMainWindow):
 
     def handle_error(self):
         self.playButton.setEnabled(False)
-        self.errorLabel.setText("Error: " + self.mediaPlayer.errorString())
+        self.errorLabel.setText("Error: " + self.media_player.errorString())
 
 
 if __name__ == '__main__':
