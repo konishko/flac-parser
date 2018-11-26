@@ -29,39 +29,31 @@ class AudioWindow(QMainWindow):
         self.file_opened = False
 
         self._init_control_layout()
-
         self._init_menu_bar()
-
         self._init_tool_bar()
-
         self._init_pic_widget()
-
         self._init_main_layout()
         self._init_connections()
 
         self.wid.setLayout(self.main_layout)
 
     def _init_menu_bar(self):
-        open_action = QAction(QIcon('open.png'), '&Open', self)
-        open_action.setShortcut('Ctrl+O')
-        open_action.setStatusTip('Open song')
-        open_action.triggered.connect(self.open_file)
+        decomposition_dict = {'&Open': ('Ctrl+O', 'Open song', self.open_file),
+                              '&Exit': ('Ctrl+Q', 'Exit application', self.exit_call),
+                              '&Save': ('Ctrl+S', 'Save picture', self.save_picture)}
 
-        exit_action = QAction(QIcon('exit.png'), '&Exit', self)
-        exit_action.setShortcut('Ctrl+Q')
-        exit_action.setStatusTip('Exit application')
-        exit_action.triggered.connect(self.exit_call)
+        self.menu_bar = self.menuBar()
+        file_menu = self.menu_bar.addMenu('&File')
 
-        save_action = QAction(QIcon('open.png'), '&Save picture', self)
-        save_action.setShortcut('Ctrl+S')
-        save_action.setStatusTip('Save picture')
-        save_action.triggered.connect(self.save_picture)
+        for key in decomposition_dict.keys():
+            value = decomposition_dict[key]
 
-        menu_bar = self.menuBar()
-        file_menu = menu_bar.addMenu('&File')
-        file_menu.addAction(open_action)
-        file_menu.addAction(exit_action)
-        file_menu.addAction(save_action)
+            action = QAction(key, self)
+            action.setShortcut(value[0])
+            action.setStatusTip(value[1])
+            action.triggered.connect(value[2])
+
+            file_menu.addAction(action)
 
     def _init_tool_bar(self):
         decomposition_dict = {'1': 'Stream info',
