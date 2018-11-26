@@ -51,7 +51,16 @@ class Parser:
             self.pointer += (length_of_block + 4)
 
     def parse_application_block(self, length_of_block):
-        pass
+        self.application_description = {'Application ID': 32}
+
+        local_pointer = self.pointer + 4
+
+        for key in self.picture_description.keys():
+            section_length = self.picture_description[key]
+            value = self.bytes[local_pointer:local_pointer + section_length]
+            local_pointer += section_length
+
+        self.result_dict['Application info'] = self.application_description
 
     def parse_cuesheet_block(self, length_of_block):
         pass
@@ -93,7 +102,20 @@ class Parser:
         self.result_dict['Picture info'] = self.picture_description
 
     def parse_seektable_block(self, length_of_block):
-        pass
+        self.seektable = {}
+        local_pointer = self.pointer + 4
+        count_of_seekpoints = length_of_block // 18
+
+        for i in range(count_of_seekpoints):
+            start_sample = self.bytes[local_pointer:local_pointer + 8]
+            offset = self.bytes[local_pointer + 8:local_pointer + 16]
+            number_of_samples = self.bytes[local_pointer + 16:local_pointer + 18]
+
+            seekpoint_info = (start_sample, offset, number_of_samples)
+
+            self.seektable['seekpoint{}'.format(i)] = seekpoint_info
+
+        self.result_dict['Seektable'] = self.seektable
 
     def parse_vorbis_comment(self, length_of_block):
         self.vorbis_tags = {}
