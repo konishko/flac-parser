@@ -52,7 +52,7 @@ class Parser:
             self.pointer += (length_of_block + 4)
 
     def parse_application_block(self, length_of_block):
-        self.application_description = {'Application ID': 32}
+        self.application_description = {'Application ID': 4}
 
         local_pointer = self.pointer + 4
 
@@ -225,8 +225,8 @@ class Parser:
         self.vorbis_tags = {}
 
         local_pointer = self.pointer + 4
-        vendor_length =  int.from_bytes(self.bytes[local_pointer:local_pointer + 4],
-                                        byteorder='little')
+        vendor_length = int.from_bytes(self.bytes[local_pointer:local_pointer + 4],
+                                       byteorder='little')
         local_pointer += 4
         vendor = self.bytes[local_pointer:local_pointer + vendor_length].decode('utf-8')
 
