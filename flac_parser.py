@@ -52,7 +52,8 @@ class Parser:
             self.pointer += (length_of_block + 4)
 
     def parse_application_block(self, length_of_block):
-        self.application_description = {'Application ID': 4}
+        self.application_description = {'Application ID': 4,
+                                        'Data': length_of_block - 4}
 
         local_pointer = self.pointer + 4
 
