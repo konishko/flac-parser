@@ -3,6 +3,7 @@
 
 import argparse
 import operations_with_os as owo
+import copy
 import sys
 
 
@@ -58,12 +59,115 @@ class Parser:
         for key in self.picture_description.keys():
             section_length = self.picture_description[key]
             value = self.bytes[local_pointer:local_pointer + section_length]
+            self.application_description[key] = value
             local_pointer += section_length
 
         self.result_dict['Application info'] = self.application_description
 
     def parse_cuesheet_block(self, length_of_block):
-        pass
+        self.cuesheet_description = {'Media catalog number': 128,
+                                     'Number of lead-in samples': 8,
+                                     'Is a compact disk': 1,
+                                     '~reserved~': 258,
+                                     'Tracks count': 1,
+                                     'Tracks': []}
+
+        local_pointer = self.pointer + 4
+
+        for key in self.cuesheet_description.keys():
+            if key == 'Tracks':
+                local_pointer = self.parse_cuesheet_tracks(self.cuesheet_description['Tracks count'], local_pointer)
+                self.cuesheet_description[key] = copy.deepcopy(self.tracks)
+                break
+
+            section_length = self.cuesheet_description[key]
+            value = self.bytes[local_pointer:local_pointer + section_length]
+            local_pointer += section_length
+
+            if key == 'Media catalog number':
+                value = value.decode('ascii')
+
+            elif key == 'Is a compact disk':
+                value = int.from_bytes(value, byteorder='big') >> 7
+
+            else:
+                value = int.from_bytes(value, byteorder='big')
+
+            self.cuesheet_description[key] = value
+
+        self.result_dict['Cuesheet info'] = self.cuesheet_description
+        print(self.cuesheet_description)
+
+    def parse_cuesheet_tracks(self, tracks_count, pointer):
+        self.tracks = {}
+
+        track_description = {'Offset': 8,
+                             'Track number': 1,
+                             'ISRC': 12,
+                             'Type': 1,
+                             'Pre-emphasis': 1,
+                             '~reserved~': 13,
+                             'Index points count': 1,
+                             'Index points': []}
+
+        local_pointer = pointer
+
+        for i in range(tracks_count):
+            track = copy.deepcopy(track_description)
+
+            for key in track.keys():
+                if key == 'Index points':
+                    local_pointer = self.parse_indexes(track['Index points count'], local_pointer)
+                    track[key] = copy.deepcopy(self.indexes)
+                    break
+
+                section_length = track[key]
+                value = self.bytes[local_pointer:local_pointer + section_length]
+                local_pointer += section_length
+
+                if key == 'ISRC':
+                    value = value.decode('ascii')
+
+                elif key == 'Type':
+                    value = int.from_bytes(value, byteorder='big') >> 7
+                    local_pointer -= 1
+
+                elif key == 'Pre-emphasic':
+                    value = (int.from_bytes(value, byteorder='big') >> 6) & 1
+
+                else:
+                    value = int.from_bytes(value, byteorder='big')
+
+                track[key] = value
+
+            self.tracks['track{}'.format(i)] = track
+
+        return local_pointer
+
+    def parse_indexes(self, index_points_count, pointer):
+        self.indexes = {}
+
+        index_description = {'Offset': 8,
+                             'Index point number': 1,
+                             '~reserved~': 3}
+
+        local_pointer = pointer
+
+        for i in range(index_points_count):
+            index = copy.deepcopy(index_description)
+
+            for key in index.keys():
+                section_length = index[key]
+                value = self.bytes[local_pointer:local_pointer + section_length]
+                local_pointer += section_length
+
+                value = int.from_bytes(value, byteorder='big')
+
+                index[key] = value
+
+            self.indexes['index{}'.format(i)] = index
+
+        return local_pointer
 
     def parse_picture_block(self, length_of_block):
         self.picture_description = {'Picture type': 4,
