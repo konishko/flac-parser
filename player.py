@@ -28,6 +28,7 @@ class AudioWindow(QMainWindow):
         self.tables = {}
         self.name = ''
         self.file_opened = False
+        self.picture_exist = False
 
         self._init_control_layout()
         self._init_menu_bar()
@@ -135,7 +136,7 @@ class AudioWindow(QMainWindow):
             self.try_parse(file_name)
 
     def save_picture(self):
-        if self.file_opened:
+        if self.picture_exist:
             file_name = QFileDialog.getSaveFileName(self, 'Save picture',
                                                     QDir.homePath(), '(*.{})'
                                                     .format(self.extension))[0]
@@ -144,7 +145,7 @@ class AudioWindow(QMainWindow):
 
         else:
             QMessageBox.question(self, 'Error',
-                                 'No file opened',
+                                 'No picture here',
                                  QMessageBox.Ok)
 
     def exit_call(self):
@@ -170,10 +171,12 @@ class AudioWindow(QMainWindow):
             self.set_name(self.name)
 
             if parser.picture_exist:
+                self.picture_exist = True
                 self.extension = parser.extension
                 self.pic_bytes = parser.pic_bytes
                 self.set_pic(self.pic_bytes)
             else:
+                self.picture_exist = False
                 self.set_default_pic()
 
         else:
@@ -182,6 +185,8 @@ class AudioWindow(QMainWindow):
                                  QMessageBox.Ok)
 
     def fill_tables(self, dict):
+        self.tables.clear()
+
         for key in dict.keys():
             table = QTableWidget()
             table.setColumnCount(2)
